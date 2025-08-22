@@ -1,0 +1,217 @@
+---
+description:
+globs:
+alwaysApply: false
+---
+
+# 지갑 서명 검증 클라이언트 프로젝트 룰 (.cursorrules)
+
+## 프로젝트 개요
+이 프로젝트는 EIP-7702 스타일 원시 secp256k1 서명과 EIP-712 서명을 생성하는 지갑 클라이언트입니다.
+QR 코드를 스캔하여 서명을 생성하고 검증 서버로 전송하는 기능을 구현합니다.
+
+## 기술 스택 규칙
+
+### 필수 라이브러리
+- **ethers v6**: 모든 암호화 관련 작업의 유일한 의존성
+- **Next.js 14+**: 프론트엔드 프레임워크
+- **TypeScript**: 모든 코드는 TypeScript로 작성
+
+### 금지된 의존성
+- web3.js, viem 등 다른 이더리움 라이브러리 사용 금지
+- provider 의존성 (MetaMask, WalletConnect 등) 금지
+- 서명 관련 외부 서비스 사용 금지
+
+## 서명 구현 규칙
+
+### EIP-7702 스타일 서명
+```typescript
+// 반드시 이 순서로 구현
+1. encodeRlp([toBeHex(chainId), delegator, toBeHex(nonce)])
+2. keccak256(rlpBytes)
+3. SigningKey.sign(digest) - 원시 secp256k1 서명
+4. Signature.from(sig).serialized - 65바이트 직렬화
+```
+
+### EIP-712 서명
+```typescript
+// 반드시 wallet.signTypedData 사용
+const sig712 = await wallet.signTypedData(domain, types, message);
+```
+
+### 서명 검증 필수 요소
+- **chainId**: 정확한 체인 ID 매칭
+- **delegator**: 위임 대상 주소
+- **nonce**: 1회성 사용, 재사용 방지
+- **expiresAt**: 만료 시간 체크 (선택사항이지만 권장)
+
+## 보안 가이드라인
+
+### 🚨 절대 금지사항
+- 프라이빗 키를 로그, 콘솔, 서버에 노출
+- 하드코딩된 프라이빗 키 사용 (테스트용 예외)
+- nonce 재사용
+- 만료된 서명 요청 처리
+
+### ✅ 필수 보안 조치
+- 모든 서명 전에 사용자 확인 UI 표시
+- 서명할 데이터를 사용자에게 명확히 보여주기
+- 네트워크 전송 전 HTTPS 확인
+- 민감한 데이터는 메모리에서 즉시 삭제
+
+## 코드 구조 규칙
+
+### 파일 네이밍
+```
+src/
+  lib/
+    crypto/
+      eip7702.ts          # EIP-7702 스타일 서명 로직
+      eip712.ts           # EIP-712 서명 로직
+      wallet.ts           # 지갑 관리 유틸
+      types.ts            # 암호화 관련 타입 정의
+    qr/
+      scanner.ts          # QR 스캔 로직
+      parser.ts           # QR 데이터 파싱
+    api/
+      client.ts           # 서버 통신
+  components/
+    wallet/
+      SigningFlow.tsx     # 서명 플로우 컴포넌트
+      QRScanner.tsx       # QR 스캔 컴포넌트
+      SignaturePreview.tsx # 서명 미리보기
+```
+
+### 함수 네이밍 컨벤션
+- `create*Signature`: 서명 생성 함수
+- `verify*`: 검증 함수
+- `parse*`: 파싱 함수
+- `validate*`: 유효성 검사 함수
+
+## 타입 정의 규칙
+
+### QR 페이로드 타입
+```typescript
+interface QRPayload {
+  kind: "sign-intent";
+  chainId: number;
+  delegator: string;
+  nonce: string;
+  eip712: {
+    domain: TypedDataDomain;
+    types: Record<string, TypedDataField[]>;
+    primaryType: string;
+    message: Record<string, any>;
+  };
+  expiresAt?: number;
+}
+```
+
+### 서명 결과 타입
+```typescript
+interface SignatureResult {
+  chainId: number;
+  delegator: string;
+  nonce: string;
+  sig7702: string;        // 65바이트 hex
+  sig712: string;         // EIP-712 서명
+  pubkey: string;         // 공개키
+  address: string;        // 주소
+  expiresAt?: number;
+}
+```
+
+## 에러 처리 규칙
+
+### 에러 타입 정의
+```typescript
+enum SigningErrorType {
+  INVALID_QR = "INVALID_QR",
+  EXPIRED_REQUEST = "EXPIRED_REQUEST",
+  SIGNATURE_FAILED = "SIGNATURE_FAILED",
+  NETWORK_ERROR = "NETWORK_ERROR",
+  USER_REJECTED = "USER_REJECTED"
+}
+```
+
+### 에러 처리 패턴
+- 모든 서명 관련 함수는 Result<T, SigningError> 타입 반환
+- 사용자에게 친화적인 에러 메시지 제공
+- 개발자를 위한 상세 에러 로그 (프라이빗 키 제외)
+
+## 테스트 규칙
+
+### 테스트 구조
+```
+__tests__/
+  crypto/
+    eip7702.test.ts
+    eip712.test.ts
+  integration/
+    signing-flow.test.ts
+```
+
+### 테스트 데이터
+- 테스트용 프라이빗 키만 사용 (절대 실제 키 사용 금지)
+- 각 테스트는 독립적으로 실행 가능
+- 네트워크 의존성 없는 단위 테스트 우선
+
+## 성능 최적화 규칙
+
+### 메모리 관리
+- 서명 완료 후 민감한 데이터 즉시 삭제
+- 큰 객체는 WeakMap/WeakSet 사용 고려
+- 불필요한 재렌더링 방지 (React.memo, useMemo 활용)
+
+### 번들 최적화
+- ethers 라이브러리만 선택적 import
+- 사용하지 않는 암호화 알고리즘 제외
+- 코드 스플리팅으로 초기 로딩 최적화
+
+## 개발 워크플로우
+
+### 브랜치 전략
+- `main`: 프로덕션 준비 코드
+- `develop`: 개발 브랜치
+- `feature/*`: 기능 개발
+- `hotfix/*`: 긴급 수정
+
+### 커밋 메시지 규칙
+```
+feat: EIP-7702 서명 구현
+fix: nonce 검증 로직 수정
+security: 프라이빗 키 노출 방지
+refactor: 서명 유틸 함수 분리
+```
+
+## 배포 및 환경 설정
+
+### 환경 변수
+```
+NEXT_PUBLIC_CHAIN_ID=1
+NEXT_PUBLIC_VERIFYING_CONTRACT=0x...
+NEXT_PUBLIC_API_URL=https://verify.example.com
+```
+
+### 빌드 검증
+- TypeScript 컴파일 에러 0개
+- ESLint 에러 0개
+- 모든 테스트 통과
+- 번들 사이즈 5MB 이하
+
+## 문서화 규칙
+
+### 필수 문서
+- README.md: 프로젝트 설정 및 사용법
+- SECURITY.md: 보안 가이드라인
+- API.md: 서버 통신 인터페이스
+
+### 코드 주석
+- 암호화 관련 함수는 상세 주석 필수
+- 보안이 중요한 부분은 경고 주석 추가
+- 외부 스펙 참조 시 링크 포함 (EIP-712, EIP-7702)
+
+---
+
+**클린코드 원칙**: 기존 코드 재활용 우선, 새로운 로직 최소화
+**언어**: 모든 주석과 문서는 한국어로 작성 
