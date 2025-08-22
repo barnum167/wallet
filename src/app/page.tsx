@@ -4,6 +4,7 @@ import { useState, useCallback, useEffect } from "react";
 import { ethers, toBeHex, keccak256, encodeRlp, Signature } from "ethers";
 import { SignatureType, EIP712Domain, EIP712Types, EIP712Message, EIP7702Authorization } from "../lib/types/signature";
 import SignatureDetails from "./components/SignatureDetails";
+import PaymentQRGenerator from "./components/PaymentQRGenerator";
 
 // MetaMask 확장 타입
 declare global {
@@ -31,11 +32,11 @@ const isMobile = () => {
 };
 
 // MetaMask 모바일 앱 내부 브라우저 감지
-const isMetaMaskInAppBrowser = () => {
+const isMetaMaskInAppBrowser = (): boolean => {
   if (typeof window === 'undefined') return false;
   // MetaMask 앱 내부 브라우저는 user agent에 특별한 식별자를 포함
   const userAgent = navigator.userAgent;
-  return (
+  return Boolean(
     window.ethereum?.isMetaMask && 
     (userAgent.includes('MetaMaskMobile') || 
      userAgent.includes('MetaMask Mobile') ||
@@ -45,7 +46,7 @@ const isMetaMaskInAppBrowser = () => {
 };
 
 // EIP-7702 지원 여부 확인
-const supportsEIP7702 = () => {
+const supportsEIP7702 = (): boolean => {
   const isDesktop = !isMobile();
   const isMetaMaskApp = isMetaMaskInAppBrowser();
   
@@ -66,6 +67,9 @@ const createMetaMaskDeepLink = (url: string) => {
 };
 
 export default function SignatureVerifier() {
+  // 탭 상태
+  const [activeTab, setActiveTab] = useState<'signature' | 'qr-generator'>('signature');
+  
   const [account, setAccount] = useState<string>("");
   const [message, setMessage] = useState<string>("");
   const [signature, setSignature] = useState<string>("");
@@ -333,8 +337,37 @@ export default function SignatureVerifier() {
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
       <div className="max-w-md mx-auto">
         
-        {/* 모바일 가이드 */}
-        {showMobileGuide && isMobileDevice && !isMetaMaskApp && (
+        {/* 탭 메뉴 */}
+        <div className="bg-white rounded-xl shadow-lg p-4 mb-6">
+          <div className="flex gap-1 bg-gray-100 rounded-lg p-1">
+            <button
+              onClick={() => setActiveTab('signature')}
+              className={`flex-1 py-2 px-3 rounded-md text-sm font-medium transition-all duration-200 ${
+                activeTab === 'signature'
+                  ? 'bg-white text-blue-600 shadow-sm'
+                  : 'text-gray-600 hover:text-gray-800'
+              }`}
+            >
+              📋 서명 검증
+            </button>
+            <button
+              onClick={() => setActiveTab('qr-generator')}
+              className={`flex-1 py-2 px-3 rounded-md text-sm font-medium transition-all duration-200 ${
+                activeTab === 'qr-generator'
+                  ? 'bg-white text-green-600 shadow-sm'
+                  : 'text-gray-600 hover:text-gray-800'
+              }`}
+            >
+              💰 QR 생성
+            </button>
+          </div>
+        </div>
+        
+        {/* 서명 검증 탭 */}
+        {activeTab === 'signature' && (
+          <>
+            {/* 모바일 가이드 */}
+            {showMobileGuide && isMobileDevice && !isMetaMaskApp && (
           <div className="bg-orange-50 border border-orange-200 rounded-xl p-4 mb-6">
             <div className="flex items-center gap-2 mb-3">
               <span className="text-2xl">📱</span>
@@ -659,17 +692,50 @@ export default function SignatureVerifier() {
           </div>
         )}
 
-        {/* 사용법 및 팁 */}
-        <div className="bg-blue-50 rounded-xl p-4 text-center">
-          <p className="text-blue-700 text-sm mb-2">
-            💡 <strong>사용법:</strong> 지갑 연결 → 서명 타입 선택 → 메시지 입력 → 서명 → 검증
-          </p>
-          {isMobileDevice && (
-            <p className="text-orange-700 text-xs">
-              📱 <strong>2025년 업데이트:</strong> MetaMask 앱에서 EIP-7702를 완전 지원합니다!
-            </p>
-          )}
-        </div>
+            {/* 사용법 및 팁 */}
+            <div className="bg-blue-50 rounded-xl p-4 text-center">
+              <p className="text-blue-700 text-sm mb-2">
+                💡 <strong>사용법:</strong> 지갑 연결 → 서명 타입 선택 → 메시지 입력 → 서명 → 검증
+              </p>
+              {isMobileDevice && (
+                <p className="text-orange-700 text-xs">
+                  📱 <strong>2025년 업데이트:</strong> MetaMask 앱에서 EIP-7702를 완전 지원합니다!
+                </p>
+              )}
+            </div>
+          </>
+        )}
+
+        {/* QR 생성 탭 (가맹점용) */}
+        {activeTab === 'qr-generator' && (
+          <>
+            {/* 기기 정보 표시 */}
+            <div className="bg-white rounded-xl shadow-lg p-4 mb-6">
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-gray-600">현재 환경:</span>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                    isMobileDevice ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800'
+                  }`}>
+                    {isMobileDevice ? '📱 모바일' : '💻 데스크톱'}
+                  </span>
+                  {hasMetaMask && (
+                    <span className="bg-orange-100 text-orange-800 px-2 py-1 rounded-full text-xs font-medium">
+                      🦊 MetaMask
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <PaymentQRGenerator 
+              isConnected={!!account} 
+              currentChainId={0} 
+            />
+          </>
+        )}
+
+
       </div>
     </div>
   );
