@@ -28,6 +28,7 @@ interface PaymentQRData {
   chainId: number;
   rpcUrl: string;
   delegateAddress: string;
+  serverUrl: string;
   timestamp: number;
 }
 
@@ -54,8 +55,14 @@ export default function QRGenerator() {
     };
   };
 
-  // 고정된 개인키 생성 (한 번 생성되면 계속 사용)
+  // 고정된 개인키 사용 (환경변수에서 미리 정의된 지갑 사용)
   const getOrCreatePrivateKey = (): string => {
+    // 환경변수에서 미리 정의된 개인키 확인
+    const envPrivateKey = process.env.NEXT_PUBLIC_PRIVATE_KEY;
+    if (envPrivateKey) {
+      return envPrivateKey;
+    }
+    
     // 로컬 스토리지에서 기존 개인키 확인
     if (typeof window !== 'undefined') {
       const stored = localStorage.getItem('wallet_private_key');
@@ -119,6 +126,7 @@ export default function QRGenerator() {
         chainId: data.chainId,
         rpcUrl: data.rpcUrl,
         delegateAddress: data.delegateAddress,
+        serverUrl: process.env.NEXT_PUBLIC_SERVER_URL || 'https://ccd794063d7c.ngrok-free.app',
         timestamp: Date.now()
       };
 
