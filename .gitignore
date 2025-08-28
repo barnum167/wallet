@@ -41,3 +41,6 @@ yarn-error.log*
 next-env.d.ts
 
 .cursorignore
+.cursor/
+
+et --hard ef85707e1a456fbe677910041aa36af4e1856884
