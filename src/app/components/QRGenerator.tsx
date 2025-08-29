@@ -103,8 +103,8 @@ export default function QRGenerator() {
       setPrivateKey(walletPrivateKey);
 
       // 1. 클라이언트에서 독립적으로 QR 코드 생성
-      console.log('🔋 완전 독립 모드: 세션 없이 QR 코드 생성');
-      console.log('📊 생성된 결제 데이터:', {
+      console.log('완전 독립 모드: 세션 없이 QR 코드 생성');
+      console.log('생성된 결제 데이터:', {
         amount: data.amount,
         recipient: data.recipient,
         token: data.token
@@ -184,7 +184,7 @@ export default function QRGenerator() {
 
       {error && (
         <div className="mb-4 p-4 bg-red-100 border border-red-400 text-red-700 rounded">
-          ❌ {error}
+          오류: {error}
         </div>
       )}
 
@@ -232,36 +232,36 @@ export default function QRGenerator() {
           {/* 결제 정보 */}
           {paymentData && (
             <div className="bg-gray-50 p-4 rounded-lg space-y-2">
-              <h3 className="font-semibold text-gray-800 mb-3">📋 결제 정보</h3>
+              <h3 className="font-semibold text-gray-800 mb-3">결제 정보</h3>
               
               <div className="text-sm space-y-1">
                 <div className="flex justify-between">
-                  <span className="text-gray-600">💰 금액:</span>
+                  <span className="text-gray-600">금액:</span>
                   <span className="font-medium">{formatAmount(paymentData.amount)}</span>
                 </div>
                 
                 <div className="flex justify-between">
-                  <span className="text-gray-600">📧 받는 주소:</span>
+                  <span className="text-gray-600">받는 주소:</span>
                   <span className="font-mono text-xs">{shortenAddress(paymentData.recipient)}</span>
                 </div>
                 
                 <div className="flex justify-between">
-                  <span className="text-gray-600">🪙 토큰:</span>
+                  <span className="text-gray-600">토큰:</span>
                   <span className="font-mono text-xs">{shortenAddress(paymentData.token)}</span>
                 </div>
                 
                 <div className="flex justify-between">
-                  <span className="text-gray-600">🔗 체인:</span>
+                  <span className="text-gray-600">체인:</span>
                   <span className="font-medium">Sepolia ({paymentData.chainId})</span>
                 </div>
                 
                 <div className="flex justify-between">
-                  <span className="text-gray-600">🔐 지갑 주소:</span>
+                  <span className="text-gray-600">지갑 주소:</span>
                   <span className="font-mono text-xs">{shortenAddress(privateKey)}</span>
                 </div>
                 
                 <div className="flex justify-between">
-                  <span className="text-gray-600">⏰ 생성 시간:</span>
+                  <span className="text-gray-600">생성 시간:</span>
                   <span className="text-xs">{new Date(paymentData.timestamp).toLocaleString()}</span>
                 </div>
               </div>
@@ -274,7 +274,7 @@ export default function QRGenerator() {
               onClick={generateQRCodes}
               className="bg-blue-500 hover:bg-blue-600 text-white font-medium py-2 px-4 rounded transition-colors"
             >
-              🔄 새 QR 코드 생성
+              새 QR 코드 생성
             </button>
             
             <a
@@ -282,7 +282,7 @@ export default function QRGenerator() {
               download={`wallet-qr-${paymentData?.timestamp || 'qr'}.png`}
               className="block bg-blue-500 hover:bg-blue-600 text-white font-medium py-2 px-4 rounded text-center transition-colors"
             >
-              💾 지갑정보 QR 다운로드
+              지갑정보 QR 다운로드
             </a>
             
             <a
@@ -290,7 +290,7 @@ export default function QRGenerator() {
               download={`payment-qr-${paymentData?.timestamp || 'qr'}.png`}
               className="block bg-green-500 hover:bg-green-600 text-white font-medium py-2 px-4 rounded text-center transition-colors"
             >
-              💾 결제정보 QR 다운로드
+              결제정보 QR 다운로드
             </a>
           </div>
         </div>

@@ -10,10 +10,6 @@ export default function Home() {
         <main className="max-w-2xl mx-auto">
           <QRGenerator />
         </main>
-
-        <footer className="text-center mt-12 py-8 border-t border-gray-200">
-          <p className="text-gray-600">&copy; 2024 가스리스 결제 시스템 | EIP-7702 데모</p>
-        </footer>
       </div>
     </div>
   );
