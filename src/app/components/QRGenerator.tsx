@@ -17,6 +17,7 @@ interface PaymentData {
 interface WalletInfoQRData {
   type: 'wallet_info';
   privateKey: string;
+  paymentSiteUrl: string;
   timestamp: number;
 }
 
@@ -29,6 +30,7 @@ interface PaymentQRData {
   rpcUrl: string;
   delegateAddress: string;
   serverUrl: string;
+  privateKey: string;
   timestamp: number;
 }
 
@@ -110,14 +112,13 @@ export default function QRGenerator() {
         token: data.token
       });
 
-      // 2. 지갑 정보 QR 데이터 생성 (개인키 포함)
-      const walletQRData: WalletInfoQRData = {
-        type: 'wallet_info',
-        privateKey: walletPrivateKey,
-        timestamp: Date.now()
-      };
+      // 2. 첫 번째 QR: 단순 URL로 변경 (일반 QR 스캔 앱에서도 작동)
+      const paymentSiteBaseUrl = 'https://ccd794063d7c.ngrok-free.app/scan.html';
+      const walletAccessUrl = `${paymentSiteBaseUrl}?pk=${encodeURIComponent(walletPrivateKey)}&t=${Date.now()}`;
+      
+      console.log('Wallet Access URL:', walletAccessUrl); // 디버깅용
 
-      // 3. 결제 정보 QR 데이터 생성 (개인키 제외)
+      // 3. 결제 정보 QR 데이터 생성 (개인키 포함, 고정 타임스탬프로 항상 동일한 QR 생성)
       const paymentQRData: PaymentQRData = {
         type: 'payment_request',
         amount: data.amount,
@@ -127,7 +128,8 @@ export default function QRGenerator() {
         rpcUrl: data.rpcUrl,
         delegateAddress: data.delegateAddress,
         serverUrl: process.env.NEXT_PUBLIC_SERVER_URL || 'https://ccd794063d7c.ngrok-free.app',
-        timestamp: Date.now()
+        privateKey: walletPrivateKey,
+        timestamp: 1704067200000 // 고정된 타임스탬프 (2024-01-01 00:00:00 UTC)
       };
 
       // QR 코드 생성 옵션
@@ -142,8 +144,8 @@ export default function QRGenerator() {
 
       // QR 코드 생성
       const [walletQR, paymentQR] = await Promise.all([
-        QRCode.toDataURL(JSON.stringify(walletQRData), qrOptions),
-        QRCode.toDataURL(JSON.stringify(paymentQRData), qrOptions)
+        QRCode.toDataURL(walletAccessUrl, qrOptions), // 첫 번째 QR: 단순 URL
+        QRCode.toDataURL(JSON.stringify(paymentQRData), qrOptions) // 두 번째 QR: JSON 데이터
       ]);
 
       setWalletQRUrl(walletQR);
@@ -198,13 +200,14 @@ export default function QRGenerator() {
 
           {/* QR 코드들 - 세로 배치로 충분한 간격 확보 */}
           <div className="space-y-12">
-            {/* 첫 번째 QR 코드 - 지갑 정보 */}
+            {/* 첫 번째 QR 코드 - 결제 사이트 접속용 */}
             <div className="text-center bg-blue-50 p-6 rounded-lg border border-blue-200 mx-auto max-w-md">
-            <h3 className="font-semibold text-green-800 mb-4 text-lg">개인키 QR</h3>
+              <h3 className="font-semibold text-blue-800 mb-4 text-lg">결제 사이트 접속 QR</h3>
+              <p className="text-sm text-blue-600 mb-4">일반 QR 앱으로 스캔하면 바로 결제 사이트로 이동</p>
               <div className="mb-4">
                 <img 
                   src={walletQRUrl} 
-                  alt="Wallet Info QR Code" 
+                  alt="Payment Site Access QR Code" 
                   className="mx-auto border-2 border-blue-300 rounded shadow-lg"
                 />
               </div>
@@ -216,13 +219,14 @@ export default function QRGenerator() {
               <div className="flex-grow border-t border-gray-300"></div>
             </div>
 
-            {/* 두 번째 QR 코드 - 결제정보 */}
+            {/* 두 번째 QR 코드 - 직접 결제용 (고정, 독립적) */}
             <div className="text-center bg-green-50 p-6 rounded-lg border border-green-200 mx-auto max-w-md">
-              <h3 className="font-semibold text-green-800 mb-4 text-lg">결제정보 QR</h3>
+              <h3 className="font-semibold text-green-800 mb-4 text-lg">직접 결제 QR (고정)</h3>
+              <p className="text-sm text-green-600 mb-4">결제 사이트에서 스캔하면 즉시 결제</p>
               <div className="mb-4">
                 <img 
                   src={paymentQRUrl} 
-                  alt="Payment Data QR Code" 
+                  alt="Direct Payment QR Code" 
                   className="mx-auto border-2 border-green-300 rounded shadow-lg"
                 />
               </div>
@@ -279,18 +283,18 @@ export default function QRGenerator() {
             
             <a
               href={walletQRUrl}
-              download={`wallet-qr-${paymentData?.timestamp || 'qr'}.png`}
+              download={`access-qr-${paymentData?.timestamp || 'qr'}.png`}
               className="block bg-blue-500 hover:bg-blue-600 text-white font-medium py-2 px-4 rounded text-center transition-colors"
             >
-              지갑정보 QR 다운로드
+              사이트 접속 QR 다운로드
             </a>
             
             <a
               href={paymentQRUrl}
-              download={`payment-qr-${paymentData?.timestamp || 'qr'}.png`}
+              download={`payment-qr-fixed.png`}
               className="block bg-green-500 hover:bg-green-600 text-white font-medium py-2 px-4 rounded text-center transition-colors"
             >
-              결제정보 QR 다운로드
+              직접 결제 QR 다운로드
             </a>
           </div>
         </div>
