@@ -43,54 +43,56 @@ export default function QRGenerator() {
   const [error, setError] = useState<string>('');
   const [isMounted, setIsMounted] = useState(false);
 
-  // 환경 변수에서 결제 데이터 생성
-  const generatePaymentData = (): PaymentData => {
+  // 환경 변수에서 결제 데이터 생성 (null 체크)
+  const generatePaymentData = (): PaymentData | null => {
+    const amount = process.env.NEXT_PUBLIC_AMOUNT_WEI;
+    const recipient = process.env.NEXT_PUBLIC_TO;
+    const token = process.env.NEXT_PUBLIC_TOKEN;
+    const chainIdStr = process.env.NEXT_PUBLIC_CHAIN_ID;
+    const rpcUrl = process.env.NEXT_PUBLIC_RPC_URL;
+    const delegateAddress = process.env.NEXT_PUBLIC_DELEGATE_ADDRESS;
+
+    // 필수 환경 변수들이 모두 있는지 확인
+    if (!amount || !recipient || !token || !chainIdStr || !rpcUrl || !delegateAddress) {
+      console.error('필수 환경 변수가 누락되었습니다:', {
+        amount: !!amount,
+        recipient: !!recipient,
+        token: !!token,
+        chainId: !!chainIdStr,
+        rpcUrl: !!rpcUrl,
+        delegateAddress: !!delegateAddress
+      });
+      return null;
+    }
+
+    const chainId = Number(chainIdStr);
+    if (isNaN(chainId)) {
+      console.error('NEXT_PUBLIC_CHAIN_ID가 유효한 숫자가 아닙니다:', chainIdStr);
+      return null;
+    }
+
     return {
-      amount: process.env.NEXT_PUBLIC_AMOUNT_WEI || '5000000000000000',
-      recipient: process.env.NEXT_PUBLIC_TO || '0xAD3512fF38270acF364b8c161EAcAD63C17e1124',
-      token: process.env.NEXT_PUBLIC_TOKEN || '0xcb51DD86459AB5CA0cDB4BD91915D9de8e958677',
-      chainId: Number(process.env.NEXT_PUBLIC_CHAIN_ID) || 97,
-      rpcUrl: process.env.NEXT_PUBLIC_RPC_URL || 'https://bsc-testnet-rpc.publicnode.com',
-      delegateAddress: process.env.NEXT_PUBLIC_DELEGATE_ADDRESS || '0xD1B4BBE7B6414Fe912B927E0DFD4E44ccbF38Cf6',
+      amount,
+      recipient,
+      token,
+      chainId,
+      rpcUrl,
+      delegateAddress,
       privateKeyRequired: true,
       timestamp: Date.now()
     };
   };
 
-  // 고정된 개인키 사용 (환경변수에서 미리 정의된 지갑 사용)
-  const getOrCreatePrivateKey = (): string => {
-    // 환경변수에서 미리 정의된 개인키 확인
+  // 환경변수에서 개인키 가져오기 (null 체크)
+  const getPrivateKey = (): string | null => {
     const envPrivateKey = process.env.NEXT_PUBLIC_PRIVATE_KEY;
-    if (envPrivateKey) {
-      return envPrivateKey;
+    if (!envPrivateKey) {
+      console.error('NEXT_PUBLIC_PRIVATE_KEY 환경 변수가 설정되지 않았습니다');
+      return null;
     }
-    
-    // 로컬 스토리지에서 기존 개인키 확인
-    if (typeof window !== 'undefined') {
-      const stored = localStorage.getItem('wallet_private_key');
-      if (stored) {
-        return stored;
-      }
-    }
-    
-    // 새로운 개인키 생성
-    const newPrivateKey = generatePrivateKey();
-    
-    // 로컬 스토리지에 저장
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('wallet_private_key', newPrivateKey);
-    }
-    
-    return newPrivateKey;
+    return envPrivateKey;
   };
 
-  // 개인키 생성 (실제로는 더 안전한 방법 사용)
-  const generatePrivateKey = (): string => {
-    // 실제 구현에서는 암호학적으로 안전한 랜덤 생성기 사용
-    const bytes = new Uint8Array(32);
-    crypto.getRandomValues(bytes);
-    return '0x' + Array.from(bytes, byte => byte.toString(16).padStart(2, '0')).join('');
-  };
 
   // QR 코드 생성 (2개) - 완전 독립 모드
   const generateQRCodes = async () => {
@@ -99,7 +101,16 @@ export default function QRGenerator() {
 
     try {
       const data = generatePaymentData();
-      const walletPrivateKey = getOrCreatePrivateKey();
+      const walletPrivateKey = getPrivateKey();
+
+      // 필수 데이터 검증
+      if (!data) {
+        throw new Error('필수 환경 변수가 누락되어 결제 데이터를 생성할 수 없습니다');
+      }
+
+      if (!walletPrivateKey) {
+        throw new Error('NEXT_PUBLIC_PRIVATE_KEY 환경 변수가 설정되지 않았습니다');
+      }
       
       setPaymentData(data);
       setPrivateKey(walletPrivateKey);
@@ -119,6 +130,10 @@ export default function QRGenerator() {
 
       // 2. 첫 번째 QR: 단순 URL로 변경 (일반 QR 스캔 앱에서도 작동)
       const paymentSiteBaseUrl = process.env.NEXT_PUBLIC_SERVER_URL;
+      if (!paymentSiteBaseUrl) {
+        throw new Error('NEXT_PUBLIC_SERVER_URL 환경 변수가 설정되지 않았습니다');
+      }
+
       const walletAccessUrl = `${paymentSiteBaseUrl}?pk=${encodeURIComponent(walletPrivateKey)}&t=${Date.now()}`;
       
       console.log('Wallet Access URL:', walletAccessUrl); // 디버깅용
@@ -132,7 +147,7 @@ export default function QRGenerator() {
         chainId: data.chainId,
         rpcUrl: data.rpcUrl,
         delegateAddress: data.delegateAddress,
-        serverUrl: process.env.NEXT_PUBLIC_SERVER_URL!,
+        serverUrl: paymentSiteBaseUrl,
         privateKey: walletPrivateKey,
         timestamp: 1704067200000 // 고정된 타임스탬프 (2024-01-01 00:00:00 UTC)
       };
@@ -207,7 +222,7 @@ export default function QRGenerator() {
           <div className="space-y-12">
             {/* 첫 번째 QR 코드 - 결제 사이트 접속용 */}
             <div className="text-center bg-blue-50 p-6 rounded-lg border border-blue-200 mx-auto max-w-md">
-              <h3 className="font-semibold text-blue-800 mb-4 text-lg">결제 사이트 접속 QR</h3>
+              <h3 className="font-semibold text-blue-800 mb-4 text-lg">결제 사이트 접속 QR!!!</h3>
               <p className="text-sm text-blue-600 mb-4">일반 QR 앱으로 스캔하면 바로 결제 사이트로 이동</p>
               <div className="mb-4">
                 <img 
