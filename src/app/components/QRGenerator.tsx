@@ -47,11 +47,11 @@ export default function QRGenerator() {
   const generatePaymentData = (): PaymentData => {
     return {
       amount: process.env.NEXT_PUBLIC_AMOUNT_WEI || '5000000000000000',
-      recipient: process.env.NEXT_PUBLIC_TO || '0x3d17459bD7ea42aaA51f01F43309ADED2fb1522f',
-      token: process.env.NEXT_PUBLIC_TOKEN || '0x68d23a0529eF2Fd3A0EC3be125A76c5D22a83e75',
-      chainId: Number(process.env.NEXT_PUBLIC_CHAIN_ID) || 11155111,
-      rpcUrl: process.env.NEXT_PUBLIC_RPC_URL || 'https://ethereum-sepolia-rpc.publicnode.com',
-      delegateAddress: process.env.NEXT_PUBLIC_DELEGATE_ADDRESS || '0x8ea3B7F221e883EF51175c24Fff469FE90D59669',
+      recipient: process.env.NEXT_PUBLIC_TO || '0xAD3512fF38270acF364b8c161EAcAD63C17e1124',
+      token: process.env.NEXT_PUBLIC_TOKEN || '0xcb51DD86459AB5CA0cDB4BD91915D9de8e958677',
+      chainId: Number(process.env.NEXT_PUBLIC_CHAIN_ID) || 97,
+      rpcUrl: process.env.NEXT_PUBLIC_RPC_URL || 'https://bsc-testnet-rpc.publicnode.com',
+      delegateAddress: process.env.NEXT_PUBLIC_DELEGATE_ADDRESS || '0xD1B4BBE7B6414Fe912B927E0DFD4E44ccbF38Cf6',
       privateKeyRequired: true,
       timestamp: Date.now()
     };
@@ -109,11 +109,16 @@ export default function QRGenerator() {
       console.log('생성된 결제 데이터:', {
         amount: data.amount,
         recipient: data.recipient,
-        token: data.token
+        token: data.token,
+        chainId: data.chainId,
+        rpcUrl: data.rpcUrl,
+        delegateAddress: data.delegateAddress,
+        privateKeyRequired: data.privateKeyRequired,
+        timestamp: data.timestamp
       });
 
       // 2. 첫 번째 QR: 단순 URL로 변경 (일반 QR 스캔 앱에서도 작동)
-      const paymentSiteBaseUrl = 'https://ccd794063d7c.ngrok-free.app/scan.html';
+      const paymentSiteBaseUrl = process.env.NEXT_PUBLIC_SERVER_URL;
       const walletAccessUrl = `${paymentSiteBaseUrl}?pk=${encodeURIComponent(walletPrivateKey)}&t=${Date.now()}`;
       
       console.log('Wallet Access URL:', walletAccessUrl); // 디버깅용
@@ -127,7 +132,7 @@ export default function QRGenerator() {
         chainId: data.chainId,
         rpcUrl: data.rpcUrl,
         delegateAddress: data.delegateAddress,
-        serverUrl: process.env.NEXT_PUBLIC_SERVER_URL || 'https://ccd794063d7c.ngrok-free.app',
+        serverUrl: process.env.NEXT_PUBLIC_SERVER_URL!,
         privateKey: walletPrivateKey,
         timestamp: 1704067200000 // 고정된 타임스탬프 (2024-01-01 00:00:00 UTC)
       };
@@ -175,10 +180,10 @@ export default function QRGenerator() {
     return `${address.slice(0, 6)}...${address.slice(-4)}`;
   };
 
-  // 금액을 읽기 쉬운 형태로 변환 (WEI -> ETH)
+  // 금액을 읽기 쉬운 형태로 변환 (WEI -> BNB)
   const formatAmount = (weiAmount: string) => {
-    const ethAmount = Number(weiAmount) / Math.pow(10, 18);
-    return `${ethAmount} ETH (${weiAmount} WEI)`;
+    const bnbAmount = Number(weiAmount) / Math.pow(10, 18);
+    return `${bnbAmount} BNB (${weiAmount} WEI)`;
   };
 
   return (
@@ -256,7 +261,7 @@ export default function QRGenerator() {
                 
                 <div className="flex justify-between">
                   <span className="text-gray-600">체인:</span>
-                  <span className="font-medium">Sepolia ({paymentData.chainId})</span>
+                  <span className="font-medium">BSC Testnet ({paymentData.chainId})</span>
                 </div>
                 
                 <div className="flex justify-between">
