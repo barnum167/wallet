@@ -11,14 +11,12 @@ interface PaymentData {
   rpcUrl: string;
   delegateAddress: string;
   privateKeyRequired: boolean;
-  timestamp: number;
 }
 
 interface WalletInfoQRData {
   type: 'wallet_info';
   privateKey: string;
   paymentSiteUrl: string;
-  timestamp: number;
 }
 
 interface PaymentQRData {
@@ -31,7 +29,7 @@ interface PaymentQRData {
   delegateAddress: string;
   serverUrl: string;
   privateKey: string;
-  timestamp: number;
+  productName: string;
 }
 
 export default function QRGenerator() {
@@ -71,16 +69,15 @@ export default function QRGenerator() {
       return null;
     }
 
-    return {
-      amount,
-      recipient,
-      token,
-      chainId,
-      rpcUrl,
-      delegateAddress,
-      privateKeyRequired: true,
-      timestamp: Date.now()
-    };
+      return {
+    amount,
+    recipient,
+    token,
+    chainId,
+    rpcUrl,
+    delegateAddress,
+    privateKeyRequired: true
+  };
   };
 
   // 환경변수에서 개인키 가져오기 (null 체크)
@@ -124,8 +121,7 @@ export default function QRGenerator() {
         chainId: data.chainId,
         rpcUrl: data.rpcUrl,
         delegateAddress: data.delegateAddress,
-        privateKeyRequired: data.privateKeyRequired,
-        timestamp: data.timestamp
+        privateKeyRequired: data.privateKeyRequired
       });
 
       // 2. 첫 번째 QR: 단순 URL로 변경 (일반 QR 스캔 앱에서도 작동)
@@ -138,7 +134,7 @@ export default function QRGenerator() {
       
       console.log('Wallet Access URL:', walletAccessUrl); // 디버깅용
 
-      // 3. 결제 정보 QR 데이터 생성 (개인키 포함, 고정 타임스탬프로 항상 동일한 QR 생성)
+      // 3. 결제 정보 QR 데이터 생성 (개인키 포함)
       const paymentQRData: PaymentQRData = {
         type: 'payment_request',
         amount: data.amount,
@@ -149,7 +145,7 @@ export default function QRGenerator() {
         delegateAddress: data.delegateAddress,
         serverUrl: paymentSiteBaseUrl,
         privateKey: walletPrivateKey,
-        timestamp: 1704067200000 // 고정된 타임스탬프 (2024-01-01 00:00:00 UTC)
+        productName: 'CUBE COFFEE'
       };
 
       // QR 코드 생성 옵션
@@ -286,7 +282,7 @@ export default function QRGenerator() {
                 
                 <div className="flex justify-between">
                   <span className="text-gray-600">생성 시간:</span>
-                  <span className="text-xs">{new Date(paymentData.timestamp).toLocaleString()}</span>
+                  <span className="text-xs">{new Date().toLocaleString()}</span>
                 </div>
               </div>
             </div>
@@ -303,7 +299,7 @@ export default function QRGenerator() {
             
             <a
               href={walletQRUrl}
-              download={`access-qr-${paymentData?.timestamp || 'qr'}.png`}
+              download={`access-qr-${Date.now()}.png`}
               className="block bg-blue-500 hover:bg-blue-600 text-white font-medium py-2 px-4 rounded text-center transition-colors"
             >
               사이트 접속 QR 다운로드
